@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: hbauth
+  datasource:
+    url: jdbc:h2:mem:hbauthdb
+    username: sa
+    password: password
+    driverClassName: org.h2.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+  h2:
+    console:
+      enabled: true
+
+server:
+  port: 8102
+
+eureka:
+  client:
+    service-url:
+      default-zone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 90
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+token:
+  signing:
+    key: 48571E5E1C4A0A5CE47F1D984E6C1B423D6F247D1F6E5C3A796D635A75382429
+
+si:
+  auth:
+    defaultrolename: "USER"
