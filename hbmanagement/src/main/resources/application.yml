@@ -4,6 +4,16 @@ server:
 spring:
   application:
     name: hbmanagement
+  datasource:
+    url: jdbc:h2:mem:hbbookingdb
+    username: sa
+    password: password
+    driverClassName: org.h2.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+  h2:
+    console:
+      enabled: true
 
 eureka:
   client:
@@ -20,3 +30,7 @@ management:
     web:
       exposure:
         include: health,info,metrics
+
+token:
+  signing:
+    key: 48571E5E1C4A0A5CE47F1D984E6C1B423D6F247D1F6E5C3A796D635A75382429

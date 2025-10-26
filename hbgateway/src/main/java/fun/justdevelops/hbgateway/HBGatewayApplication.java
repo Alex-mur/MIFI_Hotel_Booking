@@ -15,9 +15,30 @@ public class HBGatewayApplication {
     @Bean
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
         return builder.routes()
-                .route("hbauth", r -> r
+                .route("auth", r -> r
                     .path("/api/auth/**")
-                    .uri("lb://hbauth")
+                    .uri("lb://hbbooking")
+                )
+                .route("user", r -> r
+                        .path("/api/user/**")
+                        .uri("lb://hbbooking")
+                )
+                .route("booking", r -> r
+                        .path("/api/booking/**")
+                        .uri("lb://hbbooking")
+                )
+                .route("hotel", r -> r
+                        .path("/api/hotel/**")
+                        .uri("lb://hbmanagement")
+                )
+                .route("room", r -> r
+                        .path(
+                                "/api/room",
+                                "/api/room/recommend/**",
+                                "/api/room/available/**",
+                                "/api/room/update"
+                        )
+                        .uri("lb://hbmanagement")
                 )
                 .build();
     }

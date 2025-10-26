@@ -6,7 +6,7 @@
 		<groupId>org.springframework.cloud</groupId>
 		<artifactId>spring-cloud-starter-parent</artifactId>
 		<version>2025.0.0</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
 	<groupId>fun.justdevelops</groupId>
 	<artifactId>hb</artifactId>
@@ -20,20 +20,11 @@
 	</properties>
 
 	<dependencyManagement>
-		<dependencies>
-			<dependency>
-				<groupId>org.mapstruct</groupId>
-				<artifactId>mapstruct-processor</artifactId>
-				<version>1.6.2</version>
-			</dependency>
-		</dependencies>
-
 	</dependencyManagement>
 
 	<modules>
 		<module>hbgateway</module>
 		<module>hbmanagement</module>
-		<module>hbauth</module>
 		<module>hbbooking</module>
 		<module>hbeureka</module>
 	</modules>
