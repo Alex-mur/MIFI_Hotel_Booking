@@ -28,7 +28,7 @@ public class Booking {
     @Column(name = "date_end", nullable = false)
     private LocalDate dateEnd;
 
-    @Column(name = "status", nullable = false, columnDefinition = "ENUM('PENDING')")
+    @Column(name = "status", nullable = false)
     private BookingStatus status;
 
     @CreatedDate

@@ -17,8 +17,8 @@ public interface ReservationLockRepo extends JpaRepository<ReservationLock, Long
 
     void deleteByRequestId(String requestId);
 
-    @Query("SELECT r FROM reservation_locks r " +
-            "WHERE r.roomId = :roomId " +
+    @Query("SELECT r FROM ReservationLock r " +
+            "WHERE r.room.id = :roomId " +
             "AND r.dateStart <= :dateEnd " +
             "AND r.dateEnd >= :dateStart")
     List<ReservationLock> findOverlappingLocks(

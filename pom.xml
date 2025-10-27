@@ -19,14 +19,11 @@
 		<revision.version>0.0.1-SNAPSHOT</revision.version>
 	</properties>
 
-	<dependencyManagement>
-	</dependencyManagement>
-
 	<modules>
-		<module>hbgateway</module>
+		<module>hbeureka</module>
 		<module>hbmanagement</module>
 		<module>hbbooking</module>
-		<module>hbeureka</module>
+		<module>hbgateway</module>
 	</modules>
 
 	<build>

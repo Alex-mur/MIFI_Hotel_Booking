@@ -13,8 +13,8 @@ import java.util.List;
 @Repository
 public interface BookingRepo extends JpaRepository<Booking, Long> {
 
-    @Query("SELECT b FROM bookings b WHERE " +
-            "(b.status = 'PENDING' OR b.status = 'CONFIRMED') " +
+    @Query("SELECT b FROM Booking b WHERE " +
+            "(b.status = fun.justdevelops.hbbooking.model.entity.BookingStatus.PENDING OR b.status = fun.justdevelops.hbbooking.model.entity.BookingStatus.CONFIRMED) " +
             "AND b.dateStart <= :dateEnd " +
             "AND b.dateEnd >= :dateStart")
     List<Booking> findOverlappingBookings(
