@@ -2,13 +2,13 @@ package fun.justdevelops.hbbooking.rest.dto;
 
 import lombok.Data;
 
-import java.util.UUID;
-
 @Data
 public class ReleaseRequest {
     String requestId;
+    boolean isBooked;
 
-    public ReleaseRequest(String requestId) {
+    public ReleaseRequest(String requestId, boolean isBooked) {
         this.requestId = requestId;
+        this.isBooked = isBooked;
     }
 }

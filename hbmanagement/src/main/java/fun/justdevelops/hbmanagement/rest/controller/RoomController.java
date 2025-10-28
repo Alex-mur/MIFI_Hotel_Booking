@@ -55,5 +55,4 @@ public class RoomController {
         roomService.releaseRoom(request.getRequestId());
         return ResponseEntity.ok().build();
     }
-
 }

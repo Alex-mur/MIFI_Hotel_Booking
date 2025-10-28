@@ -5,8 +5,10 @@ import lombok.Data;
 @Data
 public class ReleaseRequest {
     String requestId;
+    boolean isBooked;
 
-    public ReleaseRequest(String requestId) {
+    public ReleaseRequest(String requestId, boolean isBooked) {
         this.requestId = requestId;
+        this.isBooked = isBooked;
     }
 }

@@ -1,7 +1,6 @@
 package fun.justdevelops.hbbooking.service;
 
 
-import fun.justdevelops.hbbooking.configuration.exception.RequestException;
 import fun.justdevelops.hbbooking.model.entity.Booking;
 import fun.justdevelops.hbbooking.model.entity.BookingStatus;
 import fun.justdevelops.hbbooking.model.repo.BookingRepo;
@@ -53,7 +52,7 @@ public class BookingService {
             repo.save(booking);
 
             // Удаляем блокировку из management сервиса
-            managementClient.releaseRoom(booking.getRoomId(), new ReleaseRequest(requestId));
+            managementClient.releaseRoom(booking.getRoomId(), new ReleaseRequest(requestId, true));
 
             //Возвращаем ответ
             CreateBookingResponse response = new CreateBookingResponse();
@@ -66,7 +65,7 @@ public class BookingService {
 
         } catch (Exception e) {
             // При любой ошибке удаляем лок и отменяем бронирование
-            managementClient.releaseRoom(request.getRoomId(), new ReleaseRequest(requestId));
+            managementClient.releaseRoom(request.getRoomId(), new ReleaseRequest(requestId, false));
             booking.setStatus(BookingStatus.CANCELLED);
             repo.save(booking);
             throw new RuntimeException(e.getMessage());

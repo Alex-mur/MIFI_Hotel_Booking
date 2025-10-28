@@ -101,7 +101,12 @@ public class RoomService {
     }
 
     // Удаление лока
+    @Transactional
     public void releaseRoom(String requestId) {
-        reservationRepo.deleteByRequestId(requestId);
+        ReservationLock lock = reservationRepo.findByRequestId(requestId).orElseThrow(() -> new RuntimeException("Request not found"));
+        Room room = lock.getRoom();
+        room.setTimesBooked(room.getTimesBooked() + 1);
+        repo.save(room);
+        reservationRepo.deleteById(lock.getId());
     }
 }

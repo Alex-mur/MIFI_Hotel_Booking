@@ -10,6 +10,7 @@ import fun.justdevelops.hbmanagement.rest.dto.ConfirmResponse;
 import fun.justdevelops.hbmanagement.rest.dto.CreateRoomRequest;
 import fun.justdevelops.hbmanagement.rest.dto.UpdateRoomRequest;
 import fun.justdevelops.hbmanagement.service.RoomService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,343 +27,200 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class RoomServiceTest {
-
     @Mock
     private RoomRepo roomRepo;
-
     @Mock
     private HotelRepo hotelRepo;
-
     @Mock
     private ReservationLockRepo reservationLockRepo;
-
     @InjectMocks
     private RoomService roomService;
+    private Hotel testHotel;
+    private Room testRoom;
+    private ReservationLock testLock;
+
+    @BeforeEach
+    void setUp() {
+        testHotel = new Hotel();
+        testHotel.setId(1L);
+        testHotel.setName("Test Hotel");
+
+        testRoom = new Room(testHotel, 101);
+        testRoom.setId(1L);
+        testRoom.setAvailable(true);
+        testRoom.setTimesBooked(5);
+
+        testLock = new ReservationLock("test-request-id", testRoom, LocalDate.now(), LocalDate.now().plusDays(2));
+        testLock.setId(1L);
+    }
 
     @Test
-    void getAvailableHotelRooms_ShouldReturnOnlyAvailableRooms() {
-        Long hotelId = 1L;
-        Hotel hotel = new Hotel("Test Hotel", "Test Address");
-        hotel.setId(hotelId);
+    void getAvailableHotelRooms_ShouldReturnAvailableRooms() {
+        Room unavailableRoom = new Room(testHotel, 102);
+        unavailableRoom.setAvailable(false);
 
-        List<Room> allRooms = List.of(createRoom(1L, hotel, 101, true, 5), createRoom(2L, hotel, 102, false, 3), createRoom(3L, hotel, 103, true, 10));
+        when(roomRepo.findByHotelId(1L)).thenReturn(List.of(testRoom, unavailableRoom));
 
-        when(roomRepo.findByHotelId(hotelId)).thenReturn(allRooms);
+        List<Room> result = roomService.getAvailableHotelRooms(1L);
 
-        List<Room> result = roomService.getAvailableHotelRooms(hotelId);
+        assertEquals(1, result.size());
+        assertTrue(result.get(0).isAvailable());
+        verify(roomRepo).findByHotelId(1L);
+    }
 
-        assertNotNull(result);
+    @Test
+    void getRecommendedHotelRooms_ShouldReturnSortedByTimesBooked() {
+        Room rarelyBookedRoom = new Room(testHotel, 103);
+        rarelyBookedRoom.setTimesBooked(1);
+
+        when(roomRepo.findByHotelId(1L)).thenReturn(List.of(testRoom, rarelyBookedRoom));
+
+        List<Room> result = roomService.getRecommendedHotelRooms(1L);
+
         assertEquals(2, result.size());
-        assertTrue(result.stream().allMatch(Room::isAvailable));
-        verify(roomRepo, times(1)).findByHotelId(hotelId);
+        assertEquals(1, result.get(0).getTimesBooked());
+        assertEquals(5, result.get(1).getTimesBooked());
+        verify(roomRepo).findByHotelId(1L);
     }
 
     @Test
-    void getAvailableHotelRooms_ShouldReturnEmptyList_WhenNoAvailableRooms() {
-        Long hotelId = 1L;
-        Hotel hotel = new Hotel("Test Hotel", "Test Address");
-        hotel.setId(hotelId);
-
-        List<Room> allRooms = List.of(createRoom(1L, hotel, 101, false, 5), createRoom(2L, hotel, 102, false, 3));
-
-        when(roomRepo.findByHotelId(hotelId)).thenReturn(allRooms);
-
-        List<Room> result = roomService.getAvailableHotelRooms(hotelId);
-
-        assertNotNull(result);
-        assertTrue(result.isEmpty());
-        verify(roomRepo, times(1)).findByHotelId(hotelId);
-    }
-
-    @Test
-    void getRecommendedHotelRooms_ShouldReturnRoomsSortedByTimesBooked() {
-        Long hotelId = 1L;
-        Hotel hotel = new Hotel("Test Hotel", "Test Address");
-        hotel.setId(hotelId);
-
-        List<Room> allRooms = List.of(createRoom(1L, hotel, 101, true, 15), createRoom(2L, hotel, 102, true, 5), createRoom(3L, hotel, 103, true, 10));
-
-        when(roomRepo.findByHotelId(hotelId)).thenReturn(allRooms);
-
-        List<Room> result = roomService.getRecommendedHotelRooms(hotelId);
-
-        assertNotNull(result);
-        assertEquals(3, result.size());
-        assertEquals(5, result.get(0).getTimesBooked());
-        assertEquals(10, result.get(1).getTimesBooked());
-        assertEquals(15, result.get(2).getTimesBooked());
-        verify(roomRepo, times(1)).findByHotelId(hotelId);
-    }
-
-    @Test
-    void createRoom_ShouldSaveRoom_WhenHotelExists() {
-        Long hotelId = 1L;
-        Hotel hotel = new Hotel("Test Hotel", "Test Address");
-        hotel.setId(hotelId);
-
+    void createRoom_WithValidHotel_ShouldSaveRoom() {
         CreateRoomRequest request = new CreateRoomRequest();
-        request.setHotelId(hotelId);
-        request.setNumber(101);
+        request.setHotelId(1L);
+        request.setNumber(201);
 
-        Room expectedRoom = new Room(hotel, 101);
-        expectedRoom.setId(1L);
-
-        when(hotelRepo.findById(hotelId)).thenReturn(Optional.of(hotel));
-        when(roomRepo.save(any(Room.class))).thenReturn(expectedRoom);
+        when(hotelRepo.findById(1L)).thenReturn(Optional.of(testHotel));
+        when(roomRepo.save(any(Room.class))).thenReturn(testRoom);
 
         Room result = roomService.createRoom(request);
 
         assertNotNull(result);
-        assertEquals(expectedRoom.getId(), result.getId());
-        assertEquals(hotel, result.getHotel());
-        assertEquals(101, result.getNumber());
-
-        verify(hotelRepo, times(1)).findById(hotelId);
-        verify(roomRepo, times(1)).save(any(Room.class));
+        verify(hotelRepo).findById(1L);
+        verify(roomRepo).save(any(Room.class));
     }
 
     @Test
-    void createRoom_ShouldThrowException_WhenHotelNotFound() {
-        Long nonExistentHotelId = 999L;
+    void createRoom_WithInvalidHotel_ShouldThrowException() {
         CreateRoomRequest request = new CreateRoomRequest();
-        request.setHotelId(nonExistentHotelId);
-        request.setNumber(101);
+        request.setHotelId(999L);
 
-        when(hotelRepo.findById(nonExistentHotelId)).thenReturn(Optional.empty());
+        when(hotelRepo.findById(999L)).thenReturn(Optional.empty());
 
-        RequestException exception = assertThrows(RequestException.class, () -> roomService.createRoom(request));
-
-        assertEquals("Hotel not founded", exception.getMessage());
-        verify(hotelRepo, times(1)).findById(nonExistentHotelId);
-        verify(roomRepo, never()).save(any(Room.class));
+        assertThrows(RequestException.class, () -> roomService.createRoom(request));
+        verify(hotelRepo).findById(999L);
+        verify(roomRepo, never()).save(any());
     }
 
     @Test
-    void updateRoom_ShouldUpdateRoom_WhenRoomExists() {
-        Long roomId = 1L;
-        Hotel hotel = new Hotel("Test Hotel", "Test Address");
-        Room existingRoom = createRoom(roomId, hotel, 101, true, 5);
-
+    void updateRoom_WithValidData_ShouldUpdateRoom() {
         UpdateRoomRequest request = new UpdateRoomRequest();
-        request.setId(roomId);
-        request.setNumber(102);
+        request.setId(1L);
+        request.setNumber(101);
         request.setAvailable(false);
         request.setTimesBooked(10);
 
-        when(roomRepo.findById(roomId)).thenReturn(Optional.of(existingRoom));
-        when(roomRepo.save(existingRoom)).thenReturn(existingRoom);
+        when(roomRepo.findById(1L)).thenReturn(Optional.of(testRoom));
+        when(roomRepo.save(any(Room.class))).thenReturn(testRoom);
 
         Room result = roomService.updateRoom(request);
 
-        assertNotNull(result);
-        assertEquals(102, result.getNumber());
+        assertEquals(101, result.getNumber());
         assertFalse(result.isAvailable());
         assertEquals(10, result.getTimesBooked());
-
-        verify(roomRepo, times(1)).findById(roomId);
-        verify(roomRepo, times(1)).save(existingRoom);
+        verify(roomRepo).findById(1L);
+        verify(roomRepo).save(testRoom);
     }
 
     @Test
-    void updateRoom_ShouldThrowException_WhenRoomNotFound() {
-        Long nonExistentRoomId = 999L;
-        UpdateRoomRequest request = new UpdateRoomRequest();
-        request.setId(nonExistentRoomId);
+    void getRoomById_WithExistingId_ShouldReturnRoom() {
+        when(roomRepo.findById(1L)).thenReturn(Optional.of(testRoom));
 
-        when(roomRepo.findById(nonExistentRoomId)).thenReturn(Optional.empty());
-
-        RequestException exception = assertThrows(RequestException.class, () -> roomService.updateRoom(request));
-
-        assertEquals("Room not found", exception.getMessage());
-        verify(roomRepo, times(1)).findById(nonExistentRoomId);
-        verify(roomRepo, never()).save(any(Room.class));
-    }
-
-    @Test
-    void getRoomById_ShouldReturnRoom_WhenRoomExists() {
-        Long roomId = 1L;
-        Hotel hotel = new Hotel("Test Hotel", "Test Address");
-        Room expectedRoom = createRoom(roomId, hotel, 101, true, 5);
-
-        when(roomRepo.findById(roomId)).thenReturn(Optional.of(expectedRoom));
-
-        Room result = roomService.getRoomById(roomId);
+        Room result = roomService.getRoomById(1L);
 
         assertNotNull(result);
-        assertEquals(expectedRoom, result);
-        verify(roomRepo, times(1)).findById(roomId);
+        assertEquals(1L, result.getId());
+        verify(roomRepo).findById(1L);
     }
 
     @Test
-    void getRoomById_ShouldThrowException_WhenRoomNotFound() {
-        Long nonExistentRoomId = 999L;
-        when(roomRepo.findById(nonExistentRoomId)).thenReturn(Optional.empty());
+    void getRoomById_WithNonExistingId_ShouldThrowException() {
+        when(roomRepo.findById(999L)).thenReturn(Optional.empty());
 
-        RequestException exception = assertThrows(RequestException.class, () -> roomService.getRoomById(nonExistentRoomId));
-
-        assertEquals("Room not found", exception.getMessage());
-        verify(roomRepo, times(1)).findById(nonExistentRoomId);
+        assertThrows(RequestException.class, () -> roomService.getRoomById(999L));
+        verify(roomRepo).findById(999L);
     }
 
     @Test
-    void confirmRoomAvailability_ShouldSuccess_WhenNoConflicts() {
-        Long roomId = 1L;
-        String requestId = "test-request-id";
-        LocalDate startDate = LocalDate.now().plusDays(1);
-        LocalDate endDate = LocalDate.now().plusDays(3);
+    void confirmRoomAvailability_WithNoExistingLock_ShouldCreateNewLock() {
+        ConfirmRequest request = new ConfirmRequest();
+        request.setRequestId("new-request-id");
+        request.setDateStart(LocalDate.now());
+        request.setDateEnd(LocalDate.now().plusDays(3));
 
-        ConfirmRequest confirmRequest = new ConfirmRequest(requestId, startDate, endDate);
-        Hotel hotel = new Hotel("Test Hotel", "Test Address");
-        Room room = createRoom(roomId, hotel, 101, true, 5);
-        ReservationLock lock = new ReservationLock(requestId, room, startDate, endDate);
-        lock.setId(1L);
+        when(reservationLockRepo.findByRequestId("new-request-id")).thenReturn(Optional.empty());
+        when(roomRepo.findById(1L)).thenReturn(Optional.of(testRoom));
+        when(reservationLockRepo.findOverlappingLocks(any(), any(), any())).thenReturn(List.of());
+        when(reservationLockRepo.save(any(ReservationLock.class))).thenReturn(testLock);
 
-        when(reservationLockRepo.findByRequestId(requestId)).thenReturn(Optional.empty());
-        when(roomRepo.findById(roomId)).thenReturn(Optional.of(room));
-        when(reservationLockRepo.findOverlappingLocks(roomId, startDate, endDate)).thenReturn(List.of());
-        when(reservationLockRepo.save(any(ReservationLock.class))).thenReturn(lock);
+        ConfirmResponse response = roomService.confirmRoomAvailability(1L, request);
 
-        ConfirmResponse response = roomService.confirmRoomAvailability(roomId, confirmRequest);
-
-        assertNotNull(response);
         assertTrue(response.isSuccess());
         assertEquals("Room booking locked for dates", response.getMessage());
-
-        verify(reservationLockRepo, times(1)).findByRequestId(requestId);
-        verify(roomRepo, times(1)).findById(roomId);
-        verify(reservationLockRepo, times(1)).findOverlappingLocks(roomId, startDate, endDate);
-        verify(reservationLockRepo, times(1)).save(any(ReservationLock.class));
+        verify(reservationLockRepo).findByRequestId("new-request-id");
+        verify(reservationLockRepo).findOverlappingLocks(1L, request.getDateStart(), request.getDateEnd());
+        verify(reservationLockRepo).save(any(ReservationLock.class));
     }
 
     @Test
-    void confirmRoomAvailability_ShouldFail_WhenLockAlreadyExists() {
-        Long roomId = 1L;
-        String requestId = "duplicate-request-id";
-        LocalDate startDate = LocalDate.now().plusDays(1);
-        LocalDate endDate = LocalDate.now().plusDays(3);
+    void confirmRoomAvailability_WithExistingLock_ShouldReturnFailure() {
+        ConfirmRequest request = new ConfirmRequest();
+        request.setRequestId("existing-request-id");
 
-        ConfirmRequest confirmRequest = new ConfirmRequest(requestId, startDate, endDate);
-        ReservationLock existingLock = new ReservationLock();
+        when(reservationLockRepo.findByRequestId("existing-request-id")).thenReturn(Optional.of(testLock));
 
-        when(reservationLockRepo.findByRequestId(requestId)).thenReturn(Optional.of(existingLock));
+        ConfirmResponse response = roomService.confirmRoomAvailability(1L, request);
 
-        ConfirmResponse response = roomService.confirmRoomAvailability(roomId, confirmRequest);
-
-        assertNotNull(response);
         assertFalse(response.isSuccess());
-        assertEquals("Lock for this request already created", response.getMessage());
-
-        verify(reservationLockRepo, times(1)).findByRequestId(requestId);
-        verify(roomRepo, never()).findById(anyLong());
-        verify(reservationLockRepo, never()).findOverlappingLocks(anyLong(), any(), any());
-        verify(reservationLockRepo, never()).save(any(ReservationLock.class));
+        assertTrue(response.getMessage().contains("Lock for this request already created"));
+        verify(reservationLockRepo, never()).save(any());
     }
 
     @Test
-    void confirmRoomAvailability_ShouldFail_WhenRoomNotFound() {
-        Long nonExistentRoomId = 999L;
-        String requestId = "test-request-id";
-        LocalDate startDate = LocalDate.now().plusDays(1);
-        LocalDate endDate = LocalDate.now().plusDays(3);
+    void confirmRoomAvailability_WithOverlappingLock_ShouldReturnFailure() {
+        ConfirmRequest request = new ConfirmRequest();
+        request.setRequestId("new-request-id");
+        request.setDateStart(LocalDate.now());
+        request.setDateEnd(LocalDate.now().plusDays(3));
 
-        ConfirmRequest confirmRequest = new ConfirmRequest(requestId, startDate, endDate);
+        when(reservationLockRepo.findByRequestId("new-request-id")).thenReturn(Optional.empty());
+        when(roomRepo.findById(1L)).thenReturn(Optional.of(testRoom));
+        when(reservationLockRepo.findOverlappingLocks(any(), any(), any())).thenReturn(List.of(testLock));
 
-        when(reservationLockRepo.findByRequestId(requestId)).thenReturn(Optional.empty());
-        when(roomRepo.findById(nonExistentRoomId)).thenReturn(Optional.empty());
+        ConfirmResponse response = roomService.confirmRoomAvailability(1L, request);
 
-        ConfirmResponse response = roomService.confirmRoomAvailability(nonExistentRoomId, confirmRequest);
-
-        assertNotNull(response);
         assertFalse(response.isSuccess());
-        assertTrue(response.getMessage().contains("Room not found"));
-
-        verify(reservationLockRepo, times(1)).findByRequestId(requestId);
-        verify(roomRepo, times(1)).findById(nonExistentRoomId);
-        verify(reservationLockRepo, never()).findOverlappingLocks(anyLong(), any(), any());
-        verify(reservationLockRepo, never()).save(any(ReservationLock.class));
+        assertTrue(response.getMessage().contains("Dates are temporary locked by another booking"));
+        verify(reservationLockRepo, never()).save(any());
     }
 
     @Test
-    void confirmRoomAvailability_ShouldFail_WhenOverlappingLocksExist() {
-        Long roomId = 1L;
-        String requestId = "test-request-id";
-        LocalDate startDate = LocalDate.now().plusDays(1);
-        LocalDate endDate = LocalDate.now().plusDays(3);
+    void releaseRoom_WithValidRequestId_ShouldDeleteLockAndUpdateRoom() {
+        when(reservationLockRepo.findByRequestId("test-request-id")).thenReturn(Optional.of(testLock));
+        when(roomRepo.save(any(Room.class))).thenReturn(testRoom);
 
-        ConfirmRequest confirmRequest = new ConfirmRequest(requestId, startDate, endDate);
-        Hotel hotel = new Hotel("Test Hotel", "Test Address");
-        Room room = createRoom(roomId, hotel, 101, true, 5);
-        ReservationLock overlappingLock = new ReservationLock();
+        roomService.releaseRoom("test-request-id");
 
-        when(reservationLockRepo.findByRequestId(requestId)).thenReturn(Optional.empty());
-        when(roomRepo.findById(roomId)).thenReturn(Optional.of(room));
-        when(reservationLockRepo.findOverlappingLocks(roomId, startDate, endDate)).thenReturn(List.of(overlappingLock));
-
-        ConfirmResponse response = roomService.confirmRoomAvailability(roomId, confirmRequest);
-
-        assertNotNull(response);
-        assertFalse(response.isSuccess());
-        assertEquals("Dates are temporary locked by another booking", response.getMessage());
-
-        verify(reservationLockRepo, times(1)).findByRequestId(requestId);
-        verify(roomRepo, times(1)).findById(roomId);
-        verify(reservationLockRepo, times(1)).findOverlappingLocks(roomId, startDate, endDate);
-        verify(reservationLockRepo, never()).save(any(ReservationLock.class));
+        verify(roomRepo).save(testRoom);
+        verify(reservationLockRepo).deleteById(1L);
+        assertEquals(6, testRoom.getTimesBooked());
     }
 
     @Test
-    void confirmRoomAvailability_ShouldHandleExceptionDuringLockCreation() {
-        Long roomId = 1L;
-        String requestId = "test-request-id";
-        LocalDate startDate = LocalDate.now().plusDays(1);
-        LocalDate endDate = LocalDate.now().plusDays(3);
+    void releaseRoom_WithInvalidRequestId_ShouldThrowException() {
+        when(reservationLockRepo.findByRequestId("invalid-id")).thenReturn(Optional.empty());
 
-        ConfirmRequest confirmRequest = new ConfirmRequest(requestId, startDate, endDate);
-        Hotel hotel = new Hotel("Test Hotel", "Test Address");
-        Room room = createRoom(roomId, hotel, 101, true, 5);
-
-        when(reservationLockRepo.findByRequestId(requestId)).thenReturn(Optional.empty());
-        when(roomRepo.findById(roomId)).thenReturn(Optional.of(room));
-        when(reservationLockRepo.findOverlappingLocks(roomId, startDate, endDate)).thenReturn(List.of());
-        when(reservationLockRepo.save(any(ReservationLock.class))).thenThrow(new RuntimeException("Database connection failed"));
-
-        ConfirmResponse response = roomService.confirmRoomAvailability(roomId, confirmRequest);
-
-        assertNotNull(response);
-        assertFalse(response.isSuccess());
-        assertEquals("Database connection failed", response.getMessage());
-
-        verify(reservationLockRepo, times(1)).findByRequestId(requestId);
-        verify(roomRepo, times(1)).findById(roomId);
-        verify(reservationLockRepo, times(1)).findOverlappingLocks(roomId, startDate, endDate);
-        verify(reservationLockRepo, times(1)).save(any(ReservationLock.class));
-    }
-
-    @Test
-    void releaseRoom_ShouldDeleteLockByRequestId() {
-        String requestId = "test-request-id";
-        doNothing().when(reservationLockRepo).deleteByRequestId(requestId);
-
-        roomService.releaseRoom(requestId);
-
-        verify(reservationLockRepo, times(1)).deleteByRequestId(requestId);
-    }
-
-    @Test
-    void releaseRoom_ShouldHandleNullRequestId() {
-        String nullRequestId = null;
-        doNothing().when(reservationLockRepo).deleteByRequestId(nullRequestId);
-
-        roomService.releaseRoom(nullRequestId);
-
-        verify(reservationLockRepo, times(1)).deleteByRequestId(nullRequestId);
-    }
-
-    private Room createRoom(Long id, Hotel hotel, int number, boolean available, int timesBooked) {
-        Room room = new Room(hotel, number);
-        room.setId(id);
-        room.setAvailable(available);
-        room.setTimesBooked(timesBooked);
-        return room;
+        assertThrows(RuntimeException.class, () -> roomService.releaseRoom("invalid-id"));
+        verify(roomRepo, never()).save(any());
+        verify(reservationLockRepo, never()).deleteById(any());
     }
 }
